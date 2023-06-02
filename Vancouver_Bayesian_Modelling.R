@@ -388,8 +388,6 @@ ggplot(mfx, aes(x = draw, fill = fct_rev(Rain48_s))) +
   facet_wrap(~ Beachname)
 
 
-
-
 ### Calculate effects for Salinity ###
 Vancouver |> rstatix::get_summary_stats(Salinity_s, Salinity)
 quantile(Vancouver$Salinity_s, probs = c(0, .50, .95, 0.99, 0.999), na.rm = TRUE)
