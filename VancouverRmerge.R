@@ -7,7 +7,7 @@ library(psych)
 
 
 ##Vancouver 
-##I did have to manually change the <10 values to 5 in excel, R wouldn't accept any changes I tried to make
+
 Vancoli=VancouverEcoli2013_2021_Modified%>%
   group_by(BeachName, Date)%>%
   mutate(Geomean10=geometric.mean(as.numeric(Ecoli10),na.rm = TRUE))%>%
@@ -26,7 +26,7 @@ Vanweath= VancouverHarbourRaw2013_2021%>%
   arrange(., `Date/Time`)%>% #organize for lagging rain
   mutate(Rain24=lag(Rainday))%>% #one day lag of rain
   mutate(Rain48=as.numeric(lag(Rainday))+as.numeric(lag(Rain24)))%>%
-  mutate(MeanTemp24=lag(`Mean Temp (°C)`))%>%
+  mutate(MeanTemp24=lag(`Mean Temp (Â°C)`))%>%
   mutate(DidRain=case_when(Rainday!=0~1,TRUE~0))%>%
   mutate(DaysofRain = with(., ave(DidRain, cumsum(DidRain == 0), FUN = cumsum)))%>%
   mutate(DidNOTRain=case_when(Rainday==0~1,TRUE~0))%>%
