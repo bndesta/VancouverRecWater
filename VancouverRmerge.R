@@ -5,7 +5,6 @@ library(tidyr)
 library(lubridate)
 library(psych)
 
-
 ##Vancouver 
 
 Vancoli=VancouverEcoli2013_2021_Modified%>%
