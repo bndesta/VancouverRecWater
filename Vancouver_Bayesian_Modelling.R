@@ -7,6 +7,15 @@
 # Geomean_10 <- Intercept + PrevGeomean + Salinity + Rain48 + Meantemp24 +
 #               UVmean24 +  DaysSinceRain  + Year + Beachname + Epselon
 
+## Examine possible different priors for SD variables
+
+priors <- tibble(student_t = rt(n = 10000, df = 3, ncp = 2.5),
+                 exp = rexp(10000, rate = 1)) 
+
+priors |> ggplot(aes(x = student_t)) + geom_density(colour = "blue") +
+  geom_density(aes(x = exp)) + 
+  xlim(0, 20) + theme_minimal()
+
 # Starting with model with beach as varying effect
 
 # Log transformed E. coli values - standardized predictors
@@ -137,6 +146,7 @@ loo(model3, model4)
 
 # Limited benefit in selecting the cross-classified model - keep year as fixed effect
 # Check change in fit with interaction between mean temperature and UV index
+# Not treating DaySinceRAin as varying slope
 
 model7 <- brm(Geomean10 ~ LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s + 
                 Rain48_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
@@ -151,7 +161,8 @@ plot(model7)
 pp_check(model7, ndraws=4000) + coord_cartesian(xlim = c(0, 500))
 pp_check(model7, type = "loo_pit_overlay")
 mcmc_acf(model7, pars = vars(contains("_s")), lags = 10)
-mcmc_pairs(model7, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun = "hex")
+mcplot <- mcmc_pairs(model7, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun = "hex")
+mcplot
 
 #Models comparison without and with the interaction effect using loo compare
 loo(model3, model7)
@@ -261,6 +272,16 @@ ggplot(mfx, aes(x = draw, fill = factor(LogEc24_s))) +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(0, 400))
 
+#Extracting the median effect value and credible intervales from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                       variables = "LogEc24_s",
+                       newdata = datagrid(model = model7, Year = unique,
+                                          Beachname = unique,
+                                          LogEc24_s = c(-0.4235989, 1.9509712))) |> 
+  summary()
+
+
+
 # Calculate beach-specific version 
 mfx <- mfx |> mutate(LogEc24_s = ifelse(LogEc24_s == -0.4235989, 
                                             "Median", "95th Percentile")) 
@@ -340,6 +361,14 @@ ggplot(mfx, aes(x = draw, fill = factor(Rain48_s))) +
   theme_classic() +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(0, 150))
+
+#Extracting the median effect value and credible intervales from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "Rain48_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   Rain48_s = c(-0.4546764, 1.8359136))) |> 
+  summary()
 
 # Calculate beach-specific version 
 mfx <- mfx |> mutate(Rain48_s = ifelse(Rain48_s == -0.4546764,
@@ -422,6 +451,15 @@ ggplot(mfx, aes(x = draw, fill = factor(Salinity_s))) +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(-100, 50))
 
+#Extracting the median effect value and credible intervales from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "Salinity_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   Salinity_s = c(0.07692692, 1.48038157))) |> 
+  summary()
+
+
 # Calculate beach-specific version 
 mfx <- mfx |> mutate(Salinity_s = ifelse(Salinity_s == 0.07692692,
                                        "Median", "95th Percentile")) 
@@ -503,6 +541,14 @@ ggplot(mfx, aes(x = draw, fill = factor(DaysSinceRain_s))) +
   theme_classic() +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(-13, 15))
+
+#Extracting the median effect value and credible intervals from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "DaysSinceRain_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   DaysSinceRain_s = c(-0.3578197, 2.2158805))) |> 
+  summary()
 
 # Calculate beach-specific version 
 mfx <- mfx |> mutate(DaysSinceRain_s = ifelse(DaysSinceRain_s == -0.3578197,
@@ -713,7 +759,14 @@ ggplot(mfx, aes(x = draw, fill = factor(Meantemp24_s))) +
   coord_cartesian(xlim = c(-150, 400)) +
   facet_wrap(~ Beachname)
 
-
+#Extracting the median effect value and credible intervals from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "Meantemp24_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   UVmean24_s = c(-2.393851210),
+                                   Meantemp24_s = c(0.1705406, 1.3344741))) |> 
+  summary()
 
 #At median 24UVMean value
 remove(mfx)
@@ -740,6 +793,14 @@ ggplot(mfx, aes(x = draw, fill = factor(Meantemp24_s))) +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(-150, 400)) +
   facet_wrap(~ Beachname)
+#Extracting the median effect value and credible intervals from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "Meantemp24_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   UVmean24_s = c(0.002988696),
+                                   Meantemp24_s = c(0.1705406, 1.3344741))) |> 
+  summary()
 
 #At 95th percentile value
 remove(mfx)
@@ -766,3 +827,12 @@ ggplot(mfx, aes(x = draw, fill = factor(Meantemp24_s))) +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(-150, 500)) +
   facet_wrap(~ Beachname)
+
+#Extracting the median effect value and credible intervals from the plot
+marginaleffects(model7, type = "response", re_formula = NULL,
+                variables = "Meantemp24_s",
+                newdata = datagrid(model = model7, Year = unique,
+                                   Beachname = unique,
+                                   UVmean24_s = c(1.585497550),
+                                   Meantemp24_s = c(0.1705406, 1.3344741))) |> 
+  summary()
