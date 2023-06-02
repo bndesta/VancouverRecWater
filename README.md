@@ -1,4 +1,8 @@
 # VancouverRecWater
+
+#The R script named 'VancouverRmerge.R' contain all the code used to perform data merging from different
+#data sources
+
 #The R script named 'Vancouver_data preparation and description plot.R' include the code used to clean, manipulate, 
 #and prepare the data for the main analysis and to produce the plot for the mean of geometric mean E. coli counts 
 #over the years
