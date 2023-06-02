@@ -1,6 +1,5 @@
 # VancouverRecWater
-#The R script named 'Vancouver_data preparation and description plot.R' include the code used to clean, manipulate, and prepare
-#the data for the main analysis and to produce the plot for the mean of geometric mean E. coli counts over the years
+#The R script named 'Vancouver_data preparation and description plot.R' include the code used to clean, manipulate, and #prepare the data for the main analysis and to produce the plot for the mean of geometric mean E. coli counts over the #years
 
 #The R script named 'Vancouver_Bayesian_Modelling.R' contain all the code used to perform the Bayesian log-linear mixed-effects
 #analysis and plots
