@@ -86,16 +86,16 @@ mcmc_pairs(model2, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun =
 
 get_prior(Geomean10 ~ LogEc24_s + Salinity_s + Rain48_s + Meantemp24_s +
           UVmean24_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
-          Rain48_s + Meantemp24_s + UVmean24_s | Beachname),
+          Rain48_s + Meantemp24_s + UVmean24_s + DaysSinceRain_s | Beachname),
           data = Vancouver, family = lognormal())
 
-priors2 <- c(set_prior("normal(0,1)",class= "b"),
+priors4 <- c(set_prior("normal(0,1)",class= "b"),
              set_prior("lkj(2)", class= "cor"))
 
 model3 <- brm(Geomean10 ~ LogEc24_s + Salinity_s + Rain48_s + Meantemp24_s +
               UVmean24_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
               Rain48_s + Meantemp24_s + UVmean24_s + DaysSinceRain_s | Beachname),
-              data = Vancouver, family = lognormal(), prior = priors2,
+              data = Vancouver, family = lognormal(), prior = priors4,
               iter = 2000, chains = 4, cores = 4, warmup = 1000, seed = 9, 
               backend = "cmdstanr", 
               stan_model_args = list(stanc_options = list("O1")))
@@ -146,7 +146,34 @@ loo(model3, model4)
 
 # Limited benefit in selecting the cross-classified model - keep year as fixed effect
 # Check change in fit with interaction between mean temperature and UV index
+
+get_prior(Geomean10 ~ LogEc24_s + Salinity_s + Rain48_s + Meantemp24_s*UVmean24_s + 
+            DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
+            Rain48_s + Meantemp24_s*UVmean24_s + DaysSinceRain_s| Beachname),
+          data = Vancouver, family = lognormal())
+
+priors6 <- c(set_prior("normal(0,1)",class= "b"),
+             set_prior("lkj(2)", class= "cor"))
+
+model8 <- brm(Geomean10 ~ LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s + 
+                Rain48_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
+               Meantemp24_s*UVmean24_s + Rain48_s + DaysSinceRain_s | Beachname),
+              data = Vancouver, family = lognormal(), prior = priors6,
+              iter = 2000, chains = 4, cores = 4, warmup = 1000, seed = 9, 
+              backend = "cmdstanr", 
+              stan_model_args = list(stanc_options = list("O1")))
+
+#Models comparison without and with the interaction effect using loo compare
+loo(model3, model8)
+
 # Not treating DaySinceRAin as varying slope
+get_prior(Geomean10 ~ LogEc24_s + Salinity_s + Rain48_s + Meantemp24_s*UVmean24_s + 
+            DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
+          Rain48_s + Meantemp24_s*UVmean24_s | Beachname),
+          data = Vancouver, family = lognormal())
+
+priors2 <- c(set_prior("normal(0,1)",class= "b"),
+             set_prior("lkj(2)", class= "cor"))
 
 model7 <- brm(Geomean10 ~ LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s + 
                 Rain48_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
@@ -164,10 +191,10 @@ mcmc_acf(model7, pars = vars(contains("_s")), lags = 10)
 mcplot <- mcmc_pairs(model7, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun = "hex")
 mcplot
 
-#Models comparison without and with the interaction effect using loo compare
-loo(model3, model7)
+#Models comparison without and with daysincerain as a varying effect using loo compare
+loo(model8, model7)
 
-# This model fits the best
+# This model (model 7) fits the best
 
 # Conditional adjusted prediction plots to check appropriateness of varying slopes 
 # for each variable
@@ -176,31 +203,6 @@ plot_cap(model7, re_formula=NULL, condition = c("Salinity_s", "Beachname"))
 plot_cap(model7, re_formula=NULL, condition = c("Rain48_s", "Beachname"))
 plot_cap(model7, re_formula=NULL, condition = c("Meantemp24_s", "Beachname"))
 plot_cap(model7, re_formula=NULL, condition = c("UVmean24_s", "Beachname"))
-plot_cap(model7, re_formula=NULL, condition = c("DaysSinceRain_s", "Beachname"))
-
-#Model without dayssincerain as a varying slope 
-
-get_prior(Geomean10 ~ LogEc24_s + Salinity_s + Rain48_s + Meantemp24_s +
-            UVmean24_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
-           Rain48_s + Meantemp24_s + UVmean24_s + DaysSinceRain_s | Beachname),
-          data = Vancouver, family = lognormal())
-
-priors3 <- c(set_prior("normal(0,1)",class= "b"),
-             set_prior("lkj(2)", class= "cor"))
-
-model8 <- brm(Geomean10 ~ LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s + 
-                Rain48_s + DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + 
-               Meantemp24_s*UVmean24_s + Rain48_s + DaysSinceRain_s | Beachname),
-              data = Vancouver, family = lognormal(), prior = priors3,
-              iter = 2000, chains = 4, cores = 4, warmup = 1000, seed = 9, 
-              backend = "cmdstanr", 
-              stan_model_args = list(stanc_options = list("O1")))
-
-pp_check(model8, ndraws=4000) + coord_cartesian(xlim = c(0, 500))
-
-#Models comparison without and with the interaction effect using loo compare
-loo(model8, model7)
-
 
 
 ### Plot predictions and calculate MARGINAL EFFECTS - i.e. average effects of variables for 
@@ -477,8 +479,6 @@ ggplot(mfx, aes(x = draw, fill = fct_rev(Salinity_s))) +
 
 
 
-
-
 ### Calculate effects for DaysSinceRain ###
 
 Vancouver |> rstatix::get_summary_stats(DaysSinceRain_s, DaysSinceRain)
@@ -564,8 +564,6 @@ ggplot(mfx, aes(x = draw, fill = fct_rev(DaysSinceRain_s))) +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(-20, 20)) +
   facet_wrap(~ Beachname)
-
-
 
 
 
