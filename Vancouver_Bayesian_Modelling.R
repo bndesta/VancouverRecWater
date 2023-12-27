@@ -832,3 +832,105 @@ marginaleffects(model7, type = "response", re_formula = NULL,
                                    UVmean24_s = c(1.585497550),
                                    Meantemp24_s = c(0.1705406, 1.3344741))) |> 
   summary()
+
+
+## Test model with full Bayesian missing data imputation as sensitivity analysis
+
+pacman::p_load(mice)
+
+# Create version of dataset with only variables used in final model
+Vancouver_model <- Vancouver |> select(Geomean10, LogEc24_s, Salinity_s, Rain48_s, Meantemp24_s, 
+                                       UVmean24_s, DaysSinceRain_s, Year, Beachname, Date)
+
+# Examine missingness pattern
+md.pattern(Vancouver_model)
+# There are 291 rows with at least one missing data value for variables in the model,
+# 4536 completely observed rows.
+
+## Use Bayesian imputation during model fitting
+# Need to tell brms which variables have missing values, and use non-linear model syntax to fit
+mice::md.pattern(Vancouver_model)
+
+# Start with only rainfall as this had the most missing values
+missing_rain <- 
+  bf(Geomean10 ~ LogEc24_s + Salinity_s + mi(Rain48_s) + Meantemp24_s*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + mi(Rain48_s) + 
+       Meantemp24_s*UVmean24_s | Beachname), family = lognormal()) +
+  bf(Rain48_s | mi() ~ LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + LogEc24_s + Salinity_s + Meantemp24_s*UVmean24_s | Beachname), 
+       family = gaussian()) + set_rescor(FALSE)
+
+get_prior(missing_rain, data = Vancouver)
+
+prior_missing <- c(set_prior("lkj(2)", class= "cor"),
+                   set_prior("normal(0,1)",class= "b", resp = "Geomean10"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Geomean10"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Geomean10"),
+                   set_prior("normal(0,1)",class= "b", resp = "Rain48s"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Rain48s"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Rain48s"))
+
+model7_missing <- brm(missing_rain, data = Vancouver, prior = prior_missing,
+                      iter = 2000, chains = 4, cores = 4, warmup = 1000, seed = 9, 
+                      backend = "cmdstanr", stan_model_args = list(stanc_options = list("O1")))
+
+summary(model7_missing)
+plot(model7_missing)
+pp_check(model7_missing, ndraws=4000) + coord_cartesian(xlim = c(0, 500))
+pp_check(model7_missing, type = "loo_pit_overlay")
+mcmc_acf(model7_missing, pars = vars(contains("_s")), lags = 10)
+mcplot <- mcmc_pairs(model7_missing, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun = "hex")
+mcplot
+conditional_effects(model7_missing)
+
+# Now examine model with missing imputation for all variables
+
+missing_full <- 
+  bf(Geomean10 | mi() ~ mi(LogEc24_s) + mi(Salinity_s) + mi(Rain48_s) + mi(Meantemp24_s)*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + mi(LogEc24_s) + mi(Salinity_s) + mi(Rain48_s) + 
+                                   mi(Meantemp24_s)*UVmean24_s | Beachname), family = lognormal()) +
+  bf(Rain48_s | mi() ~ mi(LogEc24_s) + mi(Salinity_s) + mi(Meantemp24_s)*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + mi(LogEc24_s) + mi(Salinity_s) + mi(Meantemp24_s)*UVmean24_s | Beachname), 
+     family = gaussian()) +
+  bf(LogEc24_s | mi() ~ mi(Rain48_s) + mi(Salinity_s) + mi(Meantemp24_s)*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + mi(Rain48_s) + mi(Salinity_s) + mi(Meantemp24_s)*UVmean24_s | Beachname), 
+     family = gaussian()) +
+  bf(Salinity_s | mi() ~ mi(LogEc24_s) + mi(Rain48_s) + mi(Meantemp24_s)*UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + mi(LogEc24_s) + mi(Rain48_s) + mi(Meantemp24_s)*UVmean24_s | Beachname), 
+     family = gaussian()) +
+  bf(Meantemp24_s | mi() ~ mi(LogEc24_s) + mi(Salinity_s) + mi(Rain48_s) + UVmean24_s + 
+       DaysSinceRain_s + Year + (1 + mi(LogEc24_s) + mi(Salinity_s) + mi(Rain48_s) + UVmean24_s | Beachname), 
+     family = gaussian()) + set_rescor(FALSE)
+
+get_prior(missing_full, data = Vancouver)
+
+prior_missing_full <- c(set_prior("lkj(2)", class= "cor"),
+                   set_prior("normal(0,1)",class= "b", resp = "Geomean10"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Geomean10"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Geomean10"),
+                   set_prior("normal(0,1)",class= "b", resp = "Rain48s"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Rain48s"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Rain48s"),
+                   set_prior("normal(0,1)",class= "b", resp = "LogEc24s"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "LogEc24s"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "LogEc24s"),
+                   set_prior("normal(0,1)",class= "b", resp = "Salinitys"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Salinitys"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Salinitys"),
+                   set_prior("normal(0,1)",class= "b", resp = "Meantemp24s"),
+                   set_prior("student_t(3,0,2.5)", class = "sd", resp = "Meantemp24s"),
+                   set_prior("student_t(3,0,2.5)", class = "sigma", resp = "Meantemp24s"))
+
+model7_missing_full <- brm(missing_full, data = Vancouver, prior = prior_missing_full,
+                      iter = 2000, chains = 4, cores = 4, warmup = 1000, seed = 9, 
+                      backend = "cmdstanr", stan_model_args = list(stanc_options = list("O1")))
+
+summary(model7_missing_full)
+plot(model7_missing_full)
+pp_check(model7_missing_full, ndraws=4000) + coord_cartesian(xlim = c(0, 500))
+pp_check(model7_missing_full, type = "loo_pit_overlay")
+mcmc_acf(model7_missing_full, pars = vars(contains("_s")), lags = 10)
+mcplot <- mcmc_pairs(model7_missing_full, pars = vars(contains("_s")), diag_fun = "den", off_diag_fun = "hex")
+mcplot
+
+conditional_effects(model7_missing_full, "Rain48_s")
