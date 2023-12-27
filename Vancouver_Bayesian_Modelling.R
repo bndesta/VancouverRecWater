@@ -836,8 +836,6 @@ marginaleffects(model7, type = "response", re_formula = NULL,
 
 ## Test model with full Bayesian missing data imputation as sensitivity analysis
 
-pacman::p_load(mice)
-
 # Create version of dataset with only variables used in final model
 Vancouver_model <- Vancouver |> select(Geomean10, LogEc24_s, Salinity_s, Rain48_s, Meantemp24_s, 
                                        UVmean24_s, DaysSinceRain_s, Year, Beachname, Date)
